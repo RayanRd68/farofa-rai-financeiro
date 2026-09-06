@@ -13,5 +13,12 @@ export default async function EditarVendaPage({
   const { id } = await params
   const [venda, produtos] = await Promise.all([getEntrada(id), getProdutos()])
   if (!venda) notFound()
-  return <VendaForm produtos={produtos} venda={venda} />
+  return (
+    <>
+      <div className="page-head">
+        <h2>Editar venda</h2>
+      </div>
+      <VendaForm produtos={produtos} venda={venda} />
+    </>
+  )
 }

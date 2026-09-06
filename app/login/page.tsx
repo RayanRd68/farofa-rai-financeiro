@@ -22,11 +22,27 @@ export default function LoginPage() {
 
   return (
     <div className="login-wrap">
-      <header style={{ textAlign: "center", marginBottom: 22 }}>
-        <h1 className="brand" style={{ color: "var(--terracotta)" }}>
+      <header style={{ textAlign: "center", marginBottom: 24 }}>
+        <div
+          className="brand"
+          style={{
+            color: "var(--terracotta)",
+            fontSize: 30,
+            whiteSpace: "normal",
+          }}
+        >
           Farofa <em style={{ color: "var(--brown-dark)" }}>da</em> Rai
-        </h1>
-        <p className="tagline" style={{ color: "var(--brown-soft)" }}>
+        </div>
+        <p
+          style={{
+            margin: "6px 0 0",
+            fontSize: 12.5,
+            letterSpacing: "1.4px",
+            textTransform: "uppercase",
+            color: "var(--brown-soft)",
+            fontWeight: 600,
+          }}
+        >
           {APP_SUBTITLE}
         </p>
       </header>

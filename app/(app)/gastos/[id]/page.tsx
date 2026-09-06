@@ -13,5 +13,12 @@ export default async function EditarGastoPage({
   const { id } = await params
   const gasto = await getSaida(id)
   if (!gasto) notFound()
-  return <GastoForm gasto={gasto} />
+  return (
+    <>
+      <div className="page-head">
+        <h2>Editar gasto</h2>
+      </div>
+      <GastoForm gasto={gasto} />
+    </>
+  )
 }

@@ -29,20 +29,24 @@ export default async function GastosPage({
         (s.fornecedor ?? "").toLowerCase().includes(q)
     )
 
+  const total = list.reduce((s, g) => s + Number(g.valor), 0)
+
   return (
     <>
-      <Link className="btn block sun" href="/gastos/novo">
-        + Novo gasto
-      </Link>
+      <div className="page-head">
+        <h2>Gastos</h2>
+        <p>
+          {list.length} {list.length === 1 ? "gasto" : "gastos"} · {fmtBRL(total)}
+        </p>
+      </div>
 
-      <div className="toolbar" style={{ marginTop: 16 }}>
+      <div className="list-toolbar">
+        <Link className="btn sun" href="/gastos/novo">
+          + Novo gasto
+        </Link>
         <SearchBar placeholder="Buscar descrição ou fornecedor…" />
       </div>
-      <FilterChips
-        param="categoria"
-        options={CATEGORIAS_GASTO}
-        allLabel="Todas"
-      />
+      <FilterChips param="categoria" options={CATEGORIAS_GASTO} allLabel="Todas" />
 
       {list.length === 0 ? (
         <div className="list-empty">
@@ -50,32 +54,37 @@ export default async function GastosPage({
           <div>Nenhum gasto encontrado.</div>
         </div>
       ) : (
-        list.map((s) => (
-          <div className="row-item" key={s.id}>
-            <div className="row-main">
-              <div className="row-title">{s.descricao}</div>
-              <div className="row-sub">
-                {fmtDateBR(s.data)}
-                {s.fornecedor ? ` · ${s.fornecedor}` : ""}
-                {s.forma_pagamento ? ` · ${s.forma_pagamento}` : ""}
+        <div className="list">
+          {list.map((s) => (
+            <div className="row-item" key={s.id}>
+              <div className="row-main">
+                <div className="row-title">
+                  {s.descricao}
+                  <span className="row-tag">{s.categoria}</span>
+                </div>
+                <div className="row-sub">
+                  {fmtDateBR(s.data)}
+                  {s.fornecedor ? ` · ${s.fornecedor}` : ""}
+                  {s.forma_pagamento ? ` · ${s.forma_pagamento}` : ""}
+                  {s.obs ? ` · ${s.obs}` : ""}
+                </div>
               </div>
-              <span className="row-tag">{s.categoria}</span>
-            </div>
-            <div className="row-right">
-              <div className="row-val neg">{fmtBRL(s.valor)}</div>
-              <div className="row-actions">
-                <Link href={`/gastos/${s.id}`} aria-label="Editar">
-                  <IconEdit />
-                </Link>
-                <DeleteButton
-                  id={s.id}
-                  onDelete={deleteGasto}
-                  message="Excluir este gasto?"
-                />
+              <div className="row-right">
+                <span className="row-val neg">{fmtBRL(s.valor)}</span>
+                <span className="row-actions">
+                  <Link href={`/gastos/${s.id}`} aria-label="Editar">
+                    <IconEdit />
+                  </Link>
+                  <DeleteButton
+                    id={s.id}
+                    onDelete={deleteGasto}
+                    message="Excluir este gasto?"
+                  />
+                </span>
               </div>
             </div>
-          </div>
-        ))
+          ))}
+        </div>
       )}
     </>
   )

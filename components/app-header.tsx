@@ -1,24 +1,24 @@
+import Link from "next/link"
+
 import { signOut } from "@/app/auth/actions"
-import { APP_SUBTITLE } from "@/lib/constants"
+import { Nav } from "@/components/nav"
 import { IconLogout } from "@/components/icons"
 
 export function AppHeader() {
   return (
-    <header className="app-header">
-      <form action={signOut}>
-        <button
-          className="header-btn"
-          title="Sair"
-          aria-label="Sair"
-          type="submit"
-        >
-          <IconLogout width={17} height={17} />
-        </button>
-      </form>
-      <h1 className="brand">
-        Farofa <em>da</em> Rai
-      </h1>
-      <p className="tagline">{APP_SUBTITLE}</p>
+    <header className="site-header">
+      <div className="site-header-inner">
+        <Link href="/" className="brand">
+          Farofa <em>da</em> Rai
+        </Link>
+        <Nav />
+        <form action={signOut}>
+          <button className="header-btn" type="submit">
+            <IconLogout />
+            Sair
+          </button>
+        </form>
+      </div>
     </header>
   )
 }

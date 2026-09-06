@@ -29,13 +29,21 @@ export default async function VendasPage({
         e.produto.toLowerCase().includes(q)
     )
 
+  const total = list.reduce((s, v) => s + Number(v.valor_total), 0)
+
   return (
     <>
-      <Link className="btn block sun" href="/vendas/nova">
-        + Nova venda
-      </Link>
+      <div className="page-head">
+        <h2>Vendas</h2>
+        <p>
+          {list.length} {list.length === 1 ? "venda" : "vendas"} · {fmtBRL(total)}
+        </p>
+      </div>
 
-      <div className="toolbar" style={{ marginTop: 16 }}>
+      <div className="list-toolbar">
+        <Link className="btn sun" href="/vendas/nova">
+          + Nova venda
+        </Link>
         <SearchBar placeholder="Buscar cliente ou produto…" />
       </div>
       <FilterChips param="tipo" options={TIPOS_VENDA} />
@@ -46,31 +54,36 @@ export default async function VendasPage({
           <div>Nenhuma venda encontrada.</div>
         </div>
       ) : (
-        list.map((v) => (
-          <div className="row-item" key={v.id}>
-            <div className="row-main">
-              <div className="row-title">{v.cliente || "Sem nome"}</div>
-              <div className="row-sub">
-                {fmtDateBR(v.data)} · {v.produto} ×{v.qtd}
-                {v.forma_pagamento ? ` · ${v.forma_pagamento}` : ""}
+        <div className="list">
+          {list.map((v) => (
+            <div className="row-item" key={v.id}>
+              <div className="row-main">
+                <div className="row-title">
+                  {v.cliente || "Sem nome"}
+                  <span className="row-tag">{v.tipo_venda}</span>
+                </div>
+                <div className="row-sub">
+                  {fmtDateBR(v.data)} · {v.produto} ×{v.qtd}
+                  {v.forma_pagamento ? ` · ${v.forma_pagamento}` : ""}
+                  {v.obs ? ` · ${v.obs}` : ""}
+                </div>
               </div>
-              <span className="row-tag">{v.tipo_venda}</span>
-            </div>
-            <div className="row-right">
-              <div className="row-val pos">{fmtBRL(v.valor_total)}</div>
-              <div className="row-actions">
-                <Link href={`/vendas/${v.id}`} aria-label="Editar">
-                  <IconEdit />
-                </Link>
-                <DeleteButton
-                  id={v.id}
-                  onDelete={deleteVenda}
-                  message="Excluir esta venda?"
-                />
+              <div className="row-right">
+                <span className="row-val pos">{fmtBRL(v.valor_total)}</span>
+                <span className="row-actions">
+                  <Link href={`/vendas/${v.id}`} aria-label="Editar">
+                    <IconEdit />
+                  </Link>
+                  <DeleteButton
+                    id={v.id}
+                    onDelete={deleteVenda}
+                    message="Excluir esta venda?"
+                  />
+                </span>
               </div>
             </div>
-          </div>
-        ))
+          ))}
+        </div>
       )}
     </>
   )

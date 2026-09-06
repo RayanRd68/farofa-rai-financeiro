@@ -8,7 +8,12 @@ export function AddProduto() {
   const [open, setOpen] = useState(false)
   if (open) return <ProdutoCard />
   return (
-    <button className="btn block sun" type="button" onClick={() => setOpen(true)}>
+    <button
+      className="btn sun"
+      type="button"
+      onClick={() => setOpen(true)}
+      style={{ marginTop: 4 }}
+    >
       + Novo produto
     </button>
   )
