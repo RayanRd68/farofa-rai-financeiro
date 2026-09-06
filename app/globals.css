@@ -588,6 +588,10 @@ main {
   color: var(--brown);
   vertical-align: middle;
 }
+.row-tag.crm {
+  background: rgba(44, 110, 127, 0.14);
+  color: var(--azulejo);
+}
 .row-right {
   flex-shrink: 0;
   display: flex;

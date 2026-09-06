@@ -57,6 +57,8 @@ const entradas: Entrada[] = raw.entradas.map((e, i) => ({
   valor_total: e.valorTotal.toFixed(2),
   forma_pagamento: e.formaPagamento || null,
   obs: e.obs || null,
+  origem: "manual",
+  origem_id: null,
   created_at: "",
 }))
 

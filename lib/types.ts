@@ -12,6 +12,8 @@ export type Entrada = {
   valor_total: string // numeric
   forma_pagamento: string | null
   obs: string | null
+  origem: "manual" | "crm"
+  origem_id: string | null
   created_at: string
 }
 

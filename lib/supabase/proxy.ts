@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import type { Database } from "@/lib/types"
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from "./config"
 
-const PUBLIC_PREFIXES = ["/login", "/auth", "/_next", "/favicon.ico"]
+const PUBLIC_PREFIXES = ["/login", "/auth", "/api", "/_next", "/favicon.ico"]
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_PREFIXES.some(

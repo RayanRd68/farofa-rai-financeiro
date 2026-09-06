@@ -61,6 +61,14 @@ export default async function VendasPage({
                 <div className="row-title">
                   {v.cliente || "Sem nome"}
                   <span className="row-tag">{v.tipo_venda}</span>
+                  {v.origem === "crm" && (
+                    <span
+                      className="row-tag crm"
+                      title="Importado do CRM (pedido entregue e pago)"
+                    >
+                      ↩ CRM
+                    </span>
+                  )}
                 </div>
                 <div className="row-sub">
                   {fmtDateBR(v.data)} · {v.produto} ×{v.qtd}

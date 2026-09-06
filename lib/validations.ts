@@ -75,3 +75,21 @@ export const produtoSchema = z.object({
 export type ProdutoInput = z.infer<typeof produtoSchema>
 
 export const idSchema = z.object({ id: z.string().uuid() })
+
+/**
+ * Payload de uma venda vinda do CRM (rota `/api/ingest/venda`). O CRM já monta
+ * os campos no formato final; aqui só revalidamos antes de gravar.
+ */
+export const ingestVendaSchema = z.object({
+  origem_id: z.string().uuid("origem_id deve ser um UUID."),
+  data: dataISO,
+  cliente: nullableText(120),
+  produto: z.string().trim().min(1, "Informe o produto.").max(120),
+  tipo_venda: z.enum(TIPOS_VENDA),
+  qtd: qty(),
+  valor_unitario: money(0, "Valor unitário"),
+  valor_total: money(0, "Valor total"),
+  forma_pagamento: formaPagamento,
+  obs: nullableText(300),
+})
+export type IngestVendaInput = z.infer<typeof ingestVendaSchema>
