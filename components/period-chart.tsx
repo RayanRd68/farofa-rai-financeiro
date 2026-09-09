@@ -1,7 +1,10 @@
 import { fmtBRL } from "@/lib/format"
 import type { PontoSerie } from "@/lib/reports/build"
 
-/** Barras Entradas x Saídas por ponto da série (dia ou mês). */
+/**
+ * Barras Entradas x Saídas por ponto da série (dia ou mês). Rola na horizontal
+ * quando o período tem muitos dias; centraliza quando são poucas colunas.
+ */
 export function PeriodChart({ serie }: { serie: PontoSerie[] }) {
   if (serie.length === 0) {
     return (
@@ -13,29 +16,26 @@ export function PeriodChart({ serie }: { serie: PontoSerie[] }) {
     )
   }
 
-  const max = Math.max(
-    1,
-    ...serie.map((p) => Math.max(p.entradas, p.saidas))
-  )
+  const max = Math.max(1, ...serie.map((p) => Math.max(p.entradas, p.saidas)))
 
   return (
     <div className="card">
-      <div className="chart">
+      <div className="pchart">
         {serie.map((p) => (
-          <div className="chart-col" key={p.label}>
-            <div className="chart-bars">
+          <div className="pcol" key={p.label}>
+            <div className="pcol-bars">
               <div
-                className="bar in"
+                className="pbar in"
                 style={{ height: `${Math.round((p.entradas / max) * 132)}px` }}
                 title={`Entradas ${p.label}: ${fmtBRL(p.entradas)}`}
               />
               <div
-                className="bar out"
+                className="pbar out"
                 style={{ height: `${Math.round((p.saidas / max) * 132)}px` }}
                 title={`Saídas ${p.label}: ${fmtBRL(p.saidas)}`}
               />
             </div>
-            <div className="m">{p.label}</div>
+            <div className="pcol-label">{p.label}</div>
           </div>
         ))}
       </div>

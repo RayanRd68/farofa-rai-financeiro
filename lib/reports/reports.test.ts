@@ -151,7 +151,7 @@ describe("buildFinanceReport", () => {
 })
 
 describe("serie", () => {
-  it("buckets diários quando o intervalo <= 62 dias", () => {
+  it("buckets diários quando o intervalo é curto (<= 45 dias)", () => {
     const r = resolveRange({ from: "2026-09-01", to: "2026-09-30" })
     const s = serie(vendas, gastos, r)
     expect(s.every((p) => /^\d{2}\/\d{2}$/.test(p.label))).toBe(true)

@@ -99,16 +99,19 @@ const dias = (from: string, to: string) =>
     (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000
   )
 
+/** Acima disso o gráfico vira mensal (senão viram dezenas de barras). */
+const DIAS_BUCKET_DIARIO = 45
+
 /**
- * Série pro gráfico: buckets diários se o intervalo <= 62 dias, senão mensais
- * (YYYY-MM). Só devolve pontos com algum movimento.
+ * Série pro gráfico: buckets diários se o intervalo <= 45 dias (mês, "30 dias"),
+ * senão mensais (YYYY-MM). Só devolve pontos com algum movimento.
  */
 export function serie(
   entradas: Entrada[],
   saidas: Saida[],
   range: ResolvedRange
 ): PontoSerie[] {
-  const diario = dias(range.from, range.to) <= 62
+  const diario = dias(range.from, range.to) <= DIAS_BUCKET_DIARIO
   const key = (iso: string) => (diario ? iso.slice(0, 10) : iso.slice(0, 7))
   const label = (k: string) => {
     if (diario) {
