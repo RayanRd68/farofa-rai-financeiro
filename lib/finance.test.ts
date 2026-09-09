@@ -5,11 +5,12 @@ import { describe, expect, it } from "vitest"
 
 import {
   computeCategorias,
-  computeMensal,
   computeTopClientes,
   computeTotais,
   margemProduto,
 } from "@/lib/finance"
+import { buildFinanceReport } from "@/lib/reports/build"
+import { resolveRange } from "@/lib/reports/period"
 import type { Entrada, Produto, Saida } from "@/lib/types"
 
 type Raw = {
@@ -99,21 +100,24 @@ describe("planilha real (jun–ago/2026) — bate com a aba Resumo", () => {
     expect(t.margem).toBeCloseTo(0.3938, 4)
   })
 
-  it("detalhamento mensal bate com a planilha", () => {
-    const m = computeMensal(entradas, saidas)
-    const jun = m[5]
-    const jul = m[6]
-    const ago = m[7]
-    expect(jun.entradas).toBeCloseTo(2745, 2)
-    expect(jun.saidas).toBeCloseTo(1258.08, 2)
-    expect(jun.lucro).toBeCloseTo(1486.92, 2)
-    expect(jul.entradas).toBeCloseTo(2732.9, 2)
-    expect(jul.lucro).toBeCloseTo(1248.99, 2)
-    expect(ago.entradas).toBeCloseTo(2286, 2)
-    expect(ago.saidas).toBeCloseTo(1964.38, 2)
-    // meses sem dado ficam zerados
-    expect(m[0].entradas).toBe(0)
-    expect(m[11].lucro).toBe(0)
+  it("série mensal (jun–ago) bate com a planilha", () => {
+    const range = resolveRange({ from: "2026-06-01", to: "2026-08-31" })
+    const { serie } = buildFinanceReport(entradas, saidas, range)
+    const m = Object.fromEntries(serie.map((p) => [p.label, p]))
+    expect(serie.map((p) => p.label)).toEqual(["Jun/26", "Jul/26", "Ago/26"])
+    expect(m["Jun/26"].entradas).toBeCloseTo(2745, 2)
+    expect(m["Jun/26"].saidas).toBeCloseTo(1258.08, 2)
+    expect(m["Jul/26"].entradas).toBeCloseTo(2732.9, 2)
+    expect(m["Ago/26"].entradas).toBeCloseTo(2286, 2)
+    expect(m["Ago/26"].saidas).toBeCloseTo(1964.38, 2)
+  })
+
+  it("recorte de agosto/2026 bate com a planilha", () => {
+    const range = resolveRange({ from: "2026-08-01", to: "2026-08-31" })
+    const { totais } = buildFinanceReport(entradas, saidas, range)
+    expect(totais.totalEntradas).toBeCloseTo(2286, 2)
+    expect(totais.totalSaidas).toBeCloseTo(1964.38, 2)
+    expect(totais.lucro).toBeCloseTo(321.62, 2)
   })
 
   it("gastos por categoria somam o total de saídas", () => {

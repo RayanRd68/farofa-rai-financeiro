@@ -1,6 +1,7 @@
 import { z } from "zod"
 
 import { CATEGORIAS_GASTO, FORMAS_PAGAMENTO, TIPOS_VENDA } from "@/lib/constants"
+import { REPORT_PRESETS } from "@/lib/reports/period"
 
 const dataISO = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida.")
 
@@ -93,3 +94,26 @@ export const ingestVendaSchema = z.object({
   obs: nullableText(300),
 })
 export type IngestVendaInput = z.infer<typeof ingestVendaSchema>
+
+/**
+ * Período do relatório do Resumo. Aceita `from`/`to` ou um `preset`.
+ * Resolvido em `lib/reports/period.ts#resolveRange`.
+ */
+export const reportRangeSchema = z
+  .object({
+    from: dataISO.optional(),
+    to: dataISO.optional(),
+    preset: z.enum(REPORT_PRESETS).optional(),
+  })
+  .refine((v) => !v.from || !v.to || v.from <= v.to, {
+    message: "A data inicial não pode ser depois da final.",
+    path: ["from"],
+  })
+export type ReportRangeInput = z.infer<typeof reportRangeSchema>
+
+export const REPORT_FORMATS = ["xlsx", "pdf"] as const
+export type ReportFormat = (typeof REPORT_FORMATS)[number]
+
+export const reportExportQuerySchema = reportRangeSchema.and(
+  z.object({ format: z.enum(REPORT_FORMATS) })
+)

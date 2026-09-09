@@ -36,6 +36,19 @@ export function fmtDateBR(iso: string | null | undefined): string {
   return `${d}/${m}/${y}`
 }
 
+/**
+ * Normaliza data (string ISO completa, "yyyy-MM-dd" ou Date) para "dd/MM/yyyy".
+ * `fmtDateBR` só lida com "yyyy-MM-dd"; este aceita timestamptz e Date.
+ */
+export function fmtDate(v: string | Date | null | undefined): string {
+  if (!v) return ""
+  if (v instanceof Date) {
+    const p = (n: number) => String(n).padStart(2, "0")
+    return `${p(v.getDate())}/${p(v.getMonth() + 1)}/${v.getFullYear()}`
+  }
+  return fmtDateBR(v.slice(0, 10))
+}
+
 export function todayISO(): string {
   const d = new Date()
   const p = (n: number) => String(n).padStart(2, "0")

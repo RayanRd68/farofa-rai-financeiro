@@ -3,23 +3,32 @@ import "server-only"
 import { createClient } from "@/lib/supabase/server"
 import type { Entrada, Produto, Saida } from "@/lib/types"
 
-export async function getEntradas(): Promise<Entrada[]> {
+/** Janela opcional por data (`yyyy-MM-dd`, inclusiva). */
+export type Periodo = { from?: string; to?: string }
+
+export async function getEntradas(periodo?: Periodo): Promise<Entrada[]> {
   const supabase = await createClient()
-  const { data } = await supabase
+  let query = supabase
     .from("entradas")
     .select("*")
     .order("data", { ascending: false })
     .order("created_at", { ascending: false })
+  if (periodo?.from) query = query.gte("data", periodo.from)
+  if (periodo?.to) query = query.lte("data", periodo.to)
+  const { data } = await query
   return data ?? []
 }
 
-export async function getSaidas(): Promise<Saida[]> {
+export async function getSaidas(periodo?: Periodo): Promise<Saida[]> {
   const supabase = await createClient()
-  const { data } = await supabase
+  let query = supabase
     .from("saidas")
     .select("*")
     .order("data", { ascending: false })
     .order("created_at", { ascending: false })
+  if (periodo?.from) query = query.gte("data", periodo.from)
+  if (periodo?.to) query = query.lte("data", periodo.to)
+  const { data } = await query
   return data ?? []
 }
 

@@ -1,9 +1,5 @@
-import { MESES_LONGOS } from "@/lib/constants"
 import { toNumber } from "@/lib/format"
 import type { Entrada, Produto, Saida } from "@/lib/types"
-
-const mes = (iso: string) => parseInt(iso.split("-")[1] ?? "0", 10) - 1
-const ano = (iso: string) => iso.split("-")[0] ?? ""
 
 export type Totais = {
   totalEntradas: number
@@ -21,43 +17,6 @@ export function computeTotais(entradas: Entrada[], saidas: Saida[]): Totais {
   const lucro = totalEntradas - totalSaidas
   const margem = totalEntradas > 0 ? lucro / totalEntradas : 0
   return { totalEntradas, totalSaidas, lucro, margem }
-}
-
-export type LinhaMensal = {
-  mes: string
-  idx: number
-  entradas: number
-  saidas: number
-  lucro: number
-  margem: number
-}
-
-/** 12 linhas (Jan..Dez), como a aba "Resumo" da planilha. */
-export function computeMensal(
-  entradas: Entrada[],
-  saidas: Saida[]
-): LinhaMensal[] {
-  const rows: LinhaMensal[] = MESES_LONGOS.map((m, i) => ({
-    mes: m,
-    idx: i,
-    entradas: 0,
-    saidas: 0,
-    lucro: 0,
-    margem: 0,
-  }))
-  for (const e of entradas) {
-    const i = mes(e.data)
-    if (rows[i]) rows[i].entradas += toNumber(e.valor_total)
-  }
-  for (const s of saidas) {
-    const i = mes(s.data)
-    if (rows[i]) rows[i].saidas += toNumber(s.valor)
-  }
-  for (const r of rows) {
-    r.lucro = r.entradas - r.saidas
-    r.margem = r.entradas > 0 ? r.lucro / r.entradas : 0
-  }
-  return rows
 }
 
 export type CategoriaTotal = { categoria: string; valor: number }
@@ -116,11 +75,4 @@ export function margemProduto(p: Produto): MargemProduto {
     lucroRevenda,
     margemRevenda: revenda > 0 ? lucroRevenda / revenda : 0,
   }
-}
-
-export function anosPresentes(entradas: Entrada[], saidas: Saida[]): string[] {
-  const ys = new Set<string>()
-  for (const e of entradas) if (e.data) ys.add(ano(e.data))
-  for (const s of saidas) if (s.data) ys.add(ano(s.data))
-  return [...ys].sort()
 }

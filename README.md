@@ -14,6 +14,10 @@ compram** e a **margem de cada produto**.
 
 Dados sincronizam entre aparelhos (ficam no Supabase, não no navegador).
 
+A tela **Resumo** filtra por período (presets ou intervalo, em `?preset=` /
+`?from=&to=`) e exporta o relatório de vendas e gastos em **PDF** e **Excel**
+(`/api/reports/export`). Decisões em `docs/decisions.md` (ADR-001).
+
 ## Rodar local
 
 ```bash

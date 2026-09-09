@@ -539,6 +539,52 @@ main {
   border-color: var(--terracotta);
   color: var(--paper);
 }
+.chip:disabled {
+  opacity: 0.5;
+}
+
+/* ---------- controles do relatório (Resumo) ---------- */
+.report-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+  padding: 14px 16px;
+  margin-bottom: 28px;
+}
+.report-controls .rc-label {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--brown-soft);
+}
+.rc-range,
+.rc-export {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.rc-export {
+  border-top: 1px dashed var(--line);
+  padding-top: 12px;
+}
+.rc-date {
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1.5px solid var(--line);
+  background: var(--paper-2);
+  font-size: 13px;
+  color: var(--brown-dark);
+  font-family: inherit;
+}
+.rc-date:focus {
+  outline: 2px solid var(--sun);
+  border-color: var(--sun-dark);
+}
 
 /* ---------- lista ---------- */
 .list {
