@@ -14,12 +14,12 @@ export function fmtBRL(v: string | number | null | undefined): string {
   return BRL.format(toNumber(v))
 }
 
-/** `n` é uma razão (0..1). fmtPct(0.394) -> "39,4%". */
+/** `n` é uma razão (0..1). fmtPct(0.3938) -> "39,38%". */
 export function fmtPct(n: number | null | undefined): string {
   return new Intl.NumberFormat("pt-BR", {
     style: "percent",
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(Number.isFinite(n as number) ? (n as number) : 0)
 }
 

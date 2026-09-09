@@ -1,3 +1,4 @@
+import { unzipSync } from "fflate"
 import { describe, expect, it } from "vitest"
 
 import { computeTotais } from "@/lib/finance"
@@ -72,9 +73,7 @@ describe("resolveRange", () => {
 
   it("30d = janela de 30 dias", () => {
     const r = resolveRange({ preset: "30d" })
-    const days = Math.round(
-      (Date.parse(r.to) - Date.parse(r.from)) / 86_400_000
-    )
+    const days = Math.round((Date.parse(r.to) - Date.parse(r.from)) / 86_400_000)
     expect(days).toBe(29)
   })
 
@@ -90,7 +89,7 @@ describe("buildFinanceReport", () => {
   const range = resolveRange({ from: "2026-09-01", to: "2026-09-30" })
   const rep = buildFinanceReport(vendas, gastos, range)
 
-  it("totais batem com computeTotais + contagens", () => {
+  it("totais batem com computeTotais + contagens + ticket médio", () => {
     const t = computeTotais(vendas, gastos)
     expect(rep.totais.totalEntradas).toBeCloseTo(t.totalEntradas)
     expect(rep.totais.totalSaidas).toBeCloseTo(t.totalSaidas)
@@ -98,6 +97,16 @@ describe("buildFinanceReport", () => {
     expect(rep.totais.qtdGastos).toBe(2)
     expect(rep.totais.totalEntradas).toBeCloseTo(159.6)
     expect(rep.totais.lucro).toBeCloseTo(107.6)
+    // ticket médio = total de vendas / qtd de vendas
+    expect(rep.totais.ticketMedio).toBeCloseTo(159.6 / 3)
+    expect(rep.temMovimento).toBe(true)
+  })
+
+  it("ticket médio é 0 quando não há vendas (sem divisão por zero)", () => {
+    const r = buildFinanceReport([], gastos, range)
+    expect(r.totais.ticketMedio).toBe(0)
+    expect(r.totais.margem).toBe(0)
+    expect(r.temMovimento).toBe(true) // tem gastos
   })
 
   it("agrupa por forma de pagamento (null -> Não informado) e soma certo", () => {
@@ -114,9 +123,17 @@ describe("buildFinanceReport", () => {
     expect(final).toMatchObject({ count: 2, valor: 42 })
   })
 
-  it("categorias e top clientes vêm de lib/finance", () => {
-    expect(rep.categorias.map((c) => c.categoria)).toContain("Ingredientes")
-    expect(rep.topClientes[0].total).toBeGreaterThan(0)
+  it("gastos por categoria: valor + contagem, ordenado por valor", () => {
+    const ing = rep.categorias.find((c) => c.categoria === "Ingredientes")
+    const emb = rep.categorias.find((c) => c.categoria === "Embalagens")
+    expect(ing).toMatchObject({ valor: 40, count: 1 })
+    expect(emb).toMatchObject({ valor: 12, count: 1 })
+    expect(rep.categorias[0].categoria).toBe("Ingredientes")
+  })
+
+  it("período concreto e data de geração", () => {
+    expect(rep.periodo).toEqual({ de: "01/09/2026", ate: "30/09/2026" })
+    expect(rep.geradoEm).toMatch(/^\d{4}-\d{2}-\d{2}$/)
   })
 
   it("descarta linhas fora da janela (não confia só na busca)", () => {
@@ -137,6 +154,7 @@ describe("buildFinanceReport", () => {
     ]
     const r = buildFinanceReport(antigas, [], resolveRange({ preset: "tudo" }))
     expect(r.cabecalho).toBe("Todo o período · 10/02/2025 a 30/06/2025")
+    expect(r.periodo).toEqual({ de: "10/02/2025", ate: "30/06/2025" })
     expect(r.cabecalho).not.toContain("2000")
   })
 
@@ -144,52 +162,116 @@ describe("buildFinanceReport", () => {
     expect(rep.cabecalho).toBe("01/09/2026 a 30/09/2026")
   })
 
-  it("cabeçalho: 'Tudo' sem lançamentos cai no rótulo", () => {
-    const r = buildFinanceReport([], [], resolveRange({ preset: "tudo" }))
-    expect(r.cabecalho).toBe("Todo o período")
+  it("período sem movimento: relatório monta, temMovimento = false", () => {
+    const r = buildFinanceReport([], [], resolveRange({ preset: "mes_passado" }))
+    expect(r.temMovimento).toBe(false)
+    expect(r.totais).toMatchObject({
+      totalEntradas: 0,
+      totalSaidas: 0,
+      lucro: 0,
+      margem: 0,
+      qtdVendas: 0,
+      qtdGastos: 0,
+      ticketMedio: 0,
+    })
   })
 })
 
-describe("serie", () => {
-  it("buckets diários quando o intervalo é curto (<= 45 dias)", () => {
-    const r = resolveRange({ from: "2026-09-01", to: "2026-09-30" })
-    const s = serie(vendas, gastos, r)
+describe("serie — granularidade adapta ao período", () => {
+  it("<= 45 dias: diário (dd/MM)", () => {
+    const s = serie(vendas, gastos, resolveRange({ from: "2026-09-01", to: "2026-09-30" }))
     expect(s.every((p) => /^\d{2}\/\d{2}$/.test(p.label))).toBe(true)
     expect(s.length).toBe(5) // 02, 03, 05, 18, 20
   })
 
-  it("buckets mensais quando o intervalo é longo", () => {
-    const r = resolveRange({ from: "2026-01-01", to: "2026-12-31" })
-    const s = serie(vendas, gastos, r)
-    expect(s.every((p) => p.label.includes("/"))).toBe(true)
+  it("46–186 dias: semanal (intervalo dd–dd/MM)", () => {
+    const s = serie(vendas, gastos, resolveRange({ from: "2026-07-01", to: "2026-10-31" }))
+    expect(s.every((p) => p.label.includes("–") || p.label.includes("-"))).toBe(true)
+    // vendas caem em 2 semanas de setembro (02/09 e 05/09 juntas; 20/09 separada)
+    const totalV = s.reduce((a, p) => a + p.entradas, 0)
+    expect(totalV).toBeCloseTo(159.6)
+  })
+
+  it("> 186 dias: mensal (Mmm/AA)", () => {
+    const s = serie(vendas, gastos, resolveRange({ from: "2026-01-01", to: "2026-12-31" }))
+    expect(s.every((p) => /^[A-Z][a-z]{2}\/\d{2}$/.test(p.label))).toBe(true)
     expect(s.length).toBe(1) // só setembro tem movimento
+    expect(s[0].entradas).toBeCloseTo(159.6)
+    expect(s[0].saidas).toBeCloseTo(52)
   })
 })
 
-describe("exportação", () => {
-  const data = buildFinanceReport(
-    vendas,
-    gastos,
-    resolveRange({ from: "2026-09-01", to: "2026-09-30" })
-  )
-
-  it("gera .xlsx (assinatura ZIP)", async () => {
-    const buf = await buildFinanceReportXlsx(data)
-    expect(buf.length).toBeGreaterThan(1000)
-    expect(buf.subarray(0, 2).toString("latin1")).toBe("PK")
-  })
-
-  it("gera .pdf e não quebra com acento", async () => {
+describe("exportação — PDF", () => {
+  it("gera um PDF válido e paginado", async () => {
+    const data = buildFinanceReport(vendas, gastos, resolveRange({ preset: "tudo" }))
     const bytes = await buildFinanceReportPdf(data)
     expect(bytes.byteLength).toBeGreaterThan(1000)
     expect(Buffer.from(bytes.subarray(0, 5)).toString("latin1")).toBe("%PDF-")
   })
 
-  it("gera arquivos mesmo com período vazio", async () => {
+  it("sobrevive a acento/emoji nos dados", async () => {
+    const data = buildFinanceReport(
+      [entrada({ id: "x", produto: "Farofa 🌽 Ação", cliente: "João D'Ávila" })],
+      [saida({ id: "y", descricao: "Café ☕", fornecedor: "Ção Ltda." })],
+      resolveRange({ preset: "tudo" })
+    )
+    const bytes = await buildFinanceReportPdf(data)
+    expect(Buffer.from(bytes.subarray(0, 5)).toString("latin1")).toBe("%PDF-")
+  })
+
+  it("período vazio ainda gera o PDF", async () => {
     const empty = buildFinanceReport([], [], resolveRange({ preset: "mes_passado" }))
-    const xlsx = await buildFinanceReportXlsx(empty)
-    const pdf = await buildFinanceReportPdf(empty)
-    expect(xlsx.subarray(0, 2).toString("latin1")).toBe("PK")
-    expect(Buffer.from(pdf.subarray(0, 5)).toString("latin1")).toBe("%PDF-")
+    const bytes = await buildFinanceReportPdf(empty)
+    expect(bytes.byteLength).toBeGreaterThan(1000)
+    expect(Buffer.from(bytes.subarray(0, 5)).toString("latin1")).toBe("%PDF-")
+  })
+})
+
+describe("exportação — Excel", () => {
+  const data = buildFinanceReport(vendas, gastos, resolveRange({ preset: "tudo" }))
+
+  it("gera um .xlsx com as 5 abas nomeadas", async () => {
+    const buf = await buildFinanceReportXlsx(data)
+    expect(buf.subarray(0, 2).toString("latin1")).toBe("PK")
+    const zip = unzipSync(new Uint8Array(buf))
+    const workbook = Buffer.from(zip["xl/workbook.xml"]).toString("utf8")
+    for (const nome of [
+      "Resumo",
+      "Vendas",
+      "Gastos",
+      "Gastos por categoria",
+      "Análise",
+    ]) {
+      expect(workbook).toContain(`"${nome}"`)
+    }
+  })
+
+  it("a aba Resumo traz os indicadores pedidos", async () => {
+    const buf = await buildFinanceReportXlsx(data)
+    const zip = unzipSync(new Uint8Array(buf))
+    const sst = Buffer.from(zip["xl/sharedStrings.xml"]).toString("utf8")
+    for (const label of [
+      "Entradas",
+      "Saídas",
+      "Total de vendas",
+      "Quantidade de vendas",
+      "Ticket médio",
+      "Total de gastos",
+      "Quantidade de gastos",
+      "Percentual",
+      "Período analisado",
+      "Data de geração",
+    ]) {
+      expect(sst).toContain(label)
+    }
+  })
+
+  it("período vazio ainda gera o .xlsx (com o aviso)", async () => {
+    const empty = buildFinanceReport([], [], resolveRange({ preset: "mes_passado" }))
+    const buf = await buildFinanceReportXlsx(empty)
+    expect(buf.subarray(0, 2).toString("latin1")).toBe("PK")
+    const zip = unzipSync(new Uint8Array(buf))
+    const sst = Buffer.from(zip["xl/sharedStrings.xml"]).toString("utf8")
+    expect(sst).toContain("Nenhuma movimentação encontrada no período selecionado.")
   })
 })

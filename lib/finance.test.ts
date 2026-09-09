@@ -100,8 +100,9 @@ describe("planilha real (jun–ago/2026) — bate com a aba Resumo", () => {
     expect(t.margem).toBeCloseTo(0.3938, 4)
   })
 
-  it("série mensal (jun–ago) bate com a planilha", () => {
-    const range = resolveRange({ from: "2026-06-01", to: "2026-08-31" })
+  it("série mensal (ano inteiro) bate com a planilha", () => {
+    // Intervalo > 6 meses -> buckets mensais.
+    const range = resolveRange({ from: "2026-01-01", to: "2026-12-31" })
     const { serie } = buildFinanceReport(entradas, saidas, range)
     const m = Object.fromEntries(serie.map((p) => [p.label, p]))
     expect(serie.map((p) => p.label)).toEqual(["Jun/26", "Jul/26", "Ago/26"])
@@ -118,9 +119,12 @@ describe("planilha real (jun–ago/2026) — bate com a aba Resumo", () => {
     expect(totais.totalEntradas).toBeCloseTo(2286, 2)
     expect(totais.totalSaidas).toBeCloseTo(1964.38, 2)
     expect(totais.lucro).toBeCloseTo(321.62, 2)
+    // agosto inteiro tem 31 dias -> série diária
+    const { serie } = buildFinanceReport(entradas, saidas, range)
+    expect(serie.every((p) => /^\d{2}\/\d{2}$/.test(p.label))).toBe(true)
   })
 
-  it("gastos por categoria somam o total de saídas", () => {
+  it("gastos por categoria somam o total de saídas + contam as linhas", () => {
     const cats = computeCategorias(saidas)
     const soma = cats.reduce((s, c) => s + c.valor, 0)
     expect(soma).toBeCloseTo(4706.37, 2)
@@ -129,6 +133,9 @@ describe("planilha real (jun–ago/2026) — bate com a aba Resumo", () => {
     expect(cats.every((c, i) => i === 0 || c.valor <= cats[i - 1].valor)).toBe(
       true
     )
+    // a soma das quantidades por categoria = total de gastos
+    expect(cats.reduce((s, c) => s + c.count, 0)).toBe(saidas.length)
+    expect(cats.every((c) => c.count >= 1)).toBe(true)
   })
 
   it("top clientes: ordenado por total, no máx. 5", () => {

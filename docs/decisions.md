@@ -62,3 +62,69 @@ contador. A Rai pediu filtros de período e exportação em PDF e Excel.
   saíram — o Resumo agora usa `serie()` + `components/period-chart.tsx`. A
   validação mensal contra a planilha migrou pro teste de `serie()` em
   `lib/finance.test.ts`.
+
+---
+
+## ADR-002 — Relatório financeiro completo nos botões Excel/PDF (amplia o ADR-001)
+
+**Contexto:** o ADR-001 entregou os botões, mas a exportação era basicamente
+"as tabelas da tela em arquivo". A Rai pediu um **relatório financeiro de
+verdade** pro contador: capa, resumo com ticket médio, listas detalhadas de
+vendas e gastos com subtotais, gastos por categoria com % , análise
+vendas × gastos com gráfico, e uma seção de resultado. Sem botão novo, sem tela
+nova — os mesmos dois botões, respeitando o período selecionado.
+
+**Decisão:**
+
+- **Mesma fonte de verdade.** Tela, PDF e Excel saem todos de
+  `getFinanceReport(range)` → `buildFinanceReport`. Os totais
+  (`totalEntradas`/`totalSaidas`/`lucro`/`margem`) são idênticos; o relatório
+  só formata (`fmtBRL`/`fmtPct`). Não pode haver divergência (requisito da Rai).
+- **Sem alteração no banco.** Todas as colunas pedidas já existem em
+  `entradas`/`saidas`. Não há campo "Status" em nenhuma das tabelas — a coluna
+  foi **omitida** (não inventar dado). RLS por `user_id` intacta.
+- **`build.ts` ganhou:** `totais.ticketMedio` (= total de vendas ÷ qtd, 0 sem
+  vendas), `categorias[].count` (via `computeCategorias`), `periodo {de, ate}`,
+  `geradoEm`, `temMovimento`, `serieUnidade`.
+- **Granularidade da série em 3 níveis** (`serie()`): **dia** ≤ 45 dias,
+  **semana** ≤ 186 dias (rótulo "dd–dd/MM", segunda a domingo, em UTC),
+  **mês** acima. Atende "diário / semanal / mensal" do pedido.
+- **`pdf.ts` reescrito** — 7 seções na ordem pedida: capa (página própria) →
+  resumo financeiro (4 cards de destaque + indicadores) → vendas do período
+  (lista + subtotais) → gastos do período (lista + subtotais) → gastos por
+  categoria (qtd + valor + % + linha TOTAL) → análise vendas × gastos (tabela
+  + **gráfico de barras** desenhado no `pdf-lib`) → resultado financeiro. A
+  classe `Doc` ganhou `cover`/`destaques`/`grafico`/`aviso` e `tabela` com
+  linha de rodapé. Rodapé com paginação ("Página X de N") + data de geração em
+  todas as páginas. `abrevPgto()` encurta "Cartão de Crédito"/"Boleto/
+  Transferência" pras colunas estreitas.
+- **`xlsx.ts` reescrito** — 5 abas fixas: **Resumo** (indicadores + período +
+  data de geração), **Vendas**, **Gastos**, **Gastos por categoria** (com
+  Percentual e TOTAL), **Análise** (Período/Vendas/Gastos/Lucro + TOTAL).
+  Colunas 2–5 das abas antigas ("por pagamento", "por tipo") saíram do arquivo
+  — o pedido definiu exatamente estas 5 abas (as quebras por forma de pagamento
+  e por tipo continuam **na tela**).
+- **Período sem dados:** o relatório é gerado normalmente com tudo zerado e um
+  aviso "Nenhuma movimentação encontrada no período selecionado." (nunca erro).
+- **`fmtPct` passou a 2 casas** ("50,50%") — a tela também, pra bater com o
+  relatório (pedido de formatação pt-BR: `XX,XX%`).
+
+**Alternativas:**
+
+- **Gráfico no Excel:** `write-excel-file` não gera gráficos e trocar por
+  `exceljs` reintroduz CVEs (ADR-001). A aba **Análise** entrega os dados
+  prontos pra "Inserir gráfico" no Excel; o gráfico fica só no PDF.
+- **Capa como bloco no topo da página 1** em vez de página própria — página
+  própria lê melhor como "documento profissional" e o relatório já tem 2+
+  páginas.
+- **Manter as 7 abas do ADR-001** — o pedido foi explícito sobre as 5.
+
+**Consequência:**
+
+- `fflate` entrou em `devDependencies` (já era transitivo do `write-excel-file`)
+  — os testes inspecionam o `.xlsx` descompactando o zip.
+- `CategoriaTotal` agora tem `count` — aditivo, a tela não muda.
+- `fmtPct` a 2 casas afeta a margem na tela (stamp) e no card de produto.
+- Nome do arquivo: `relatorio-financeiro_<from>_a_<to>.<ext>`.
+- Nenhuma mudança no frontend além do `page.tsx` (que já passava o período pros
+  botões) — `report-controls.tsx` não mudou.

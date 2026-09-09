@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const data = await getFinanceReport(range)
-    const base = `financeiro_${data.range.from}_a_${data.range.to}`
+    const base = `relatorio-financeiro_${data.periodoISO.de}_a_${data.periodoISO.ate}`
 
     if (format === "xlsx") {
       const body = await buildFinanceReportXlsx(data)

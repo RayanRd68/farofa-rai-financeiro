@@ -19,16 +19,19 @@ export function computeTotais(entradas: Entrada[], saidas: Saida[]): Totais {
   return { totalEntradas, totalSaidas, lucro, margem }
 }
 
-export type CategoriaTotal = { categoria: string; valor: number }
+export type CategoriaTotal = { categoria: string; valor: number; count: number }
 
 export function computeCategorias(saidas: Saida[]): CategoriaTotal[] {
-  const map = new Map<string, number>()
+  const map = new Map<string, { valor: number; count: number }>()
   for (const s of saidas) {
     const c = s.categoria || "Outros"
-    map.set(c, (map.get(c) ?? 0) + toNumber(s.valor))
+    const cur = map.get(c) ?? { valor: 0, count: 0 }
+    cur.valor += toNumber(s.valor)
+    cur.count += 1
+    map.set(c, cur)
   }
   return [...map.entries()]
-    .map(([categoria, valor]) => ({ categoria, valor }))
+    .map(([categoria, v]) => ({ categoria, ...v }))
     .sort((a, b) => b.valor - a.valor)
 }
 
