@@ -45,3 +45,10 @@ conta (precisa do `user_id` dela).
 Single-user. A Rai cria a conta em `/login` (e-mail + senha). Depois do cadastro,
 **desligar o signup** no painel do Supabase (Authentication → Providers → Email →
 "Allow new users to sign up" off) para ninguém mais criar conta.
+
+## Operação
+
+O Supabase **gratuito pausa o projeto após ~7 dias sem atividade** (o site abre, mas
+o login e os dados não funcionam). Uma rotina diária (`vercel.json` →
+`/api/cron/keepalive`) evita isso — ver ADR-003. Se mesmo assim pausar:
+Supabase → projeto `dguqupwfjfnbdxyngbyb` → **Restore project**.

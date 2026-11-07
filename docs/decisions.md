@@ -128,3 +128,51 @@ nova — os mesmos dois botões, respeitando o período selecionado.
 - Nome do arquivo: `relatorio-financeiro_<from>_a_<to>.<ext>`.
 - Nenhuma mudança no frontend além do `page.tsx` (que já passava o período pros
   botões) — `report-controls.tsx` não mudou.
+
+---
+
+## ADR-003 — Keep-alive diário do Supabase (evita pausa por inatividade)
+
+**Contexto:** em novembro/2026 o Controle ficou fora do ar: o site (Vercel) abria,
+mas o projeto Supabase (`dguqupwfjfnbdxyngbyb`, plano **gratuito**) foi **pausado
+por inatividade** — o plano gratuito pausa o projeto depois de ~7 dias sem uso, e
+com ele somem o login e todos os dados. O último sync do CRM tinha sido em 25/10;
+sem venda nova (o sync só chama o banco quando há pedido novo/alterado) e sem
+ninguém abrir o app, o projeto pausou. O CRM acusou erro 502 no ledger
+(`finance_exports.status = 'error'`) ao tentar sincronizar.
+
+**Decisão:** uma rotina **diária** que faz um SELECT mínimo no banco.
+
+- `vercel.json` agenda `GET /api/cron/keepalive` 1x/dia (`0 12 * * *`, 09:00 em
+  Brasília). Cron da Vercel só roda em deploy de **produção**.
+- `app/api/cron/keepalive/route.ts` cria um client com a chave pública (sem
+  sessão) e chama `pingDatabase` (`lib/keepalive.ts`): `from("entradas").select
+  ("id").limit(1)`. A RLS devolve `[]`; o que importa é atravessar
+  API → PostgREST → Postgres. Responde 200 `{ ok: true }` ou **502** `{ ok:
+  false, error }` (aparece como falha no log do cron).
+- **Rota aberta de propósito:** só faz um SELECT com a chave pública (a mesma
+  que o navegador já usa) — não expõe dado nem dá capacidade nova. Exigir segredo
+  criaria um jeito de a rotina falhar **em silêncio** (401 todo dia → projeto
+  pausa de novo). Se `CRON_SECRET` existir no projeto da Vercel, o cron já manda
+  `Authorization: Bearer …` e a rota passa a exigir (opt-in, `cronAuthorized`).
+  Diverge do fail-closed do `/api/ingest/venda` porque lá o endpoint **grava**.
+
+**Alternativas:**
+
+- **Plano Pro do Supabase** (~US$ 25/mês): resolve de vez, mas custo fixo pra um
+  app pessoal.
+- **GitHub Actions agendado:** workflows agendados são desligados após 60 dias de
+  repositório parado e o push de `.github/workflows` exige escopo `workflow`.
+- **CRM pingando o Controle no cron dele:** acopla a saúde do Controle ao CRM e
+  exige mexer e fazer deploy nos dois repositórios.
+- **Não fazer nada:** foi o que causou a queda.
+
+**Consequência:**
+
+- Zero configuração manual (nenhuma env var nova).
+- Se o projeto pausar mesmo assim: Supabase → projeto → **Restore project**
+  (projetos gratuitos pausados são restauráveis por até 90 dias).
+- A restauração pode falhar durante incidente do Supabase na região (aconteceu em
+  6/11/2026, US-West-2) — conferir `status.supabase.com` antes de insistir.
+- Pedidos que falharam durante a pausa ficam `error` no ledger do CRM e são
+  reenviados sozinhos no próximo cron do CRM, assim que o Controle volta.
