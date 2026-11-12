@@ -176,3 +176,46 @@ ninguém abrir o app, o projeto pausou. O CRM acusou erro 502 no ledger
   6/11/2026, US-West-2) — conferir `status.supabase.com` antes de insistir.
 - Pedidos que falharam durante a pausa ficam `error` no ledger do CRM e são
   reenviados sozinhos no próximo cron do CRM, assim que o Controle volta.
+
+---
+
+## ADR-004 — Integração com o CRM removida (revoga a rota de ingestão)
+
+**Contexto:** a Rai pediu para tirar a integração CRM → Controle. O CRM
+(repositório próprio; ADR-022 e ADR-024 de lá) mandava, pelo cron diário, cada
+pedido "entregue + pago" para `POST /api/ingest/venda`, que gravava em `entradas`
+pela RPC `ingest_venda` (`SECURITY DEFINER`, segredo compartilhado em
+`private.sync_config`). Fatos de 12/11/2026: o Controle já tinha lançamentos
+manuais próprios (as vendas de outubro foram refeitas à mão — 52 lançamentos — no
+lugar das 30 que vieram do CRM) e, em novembro, o projeto Supabase pausou por
+inatividade (ADR-003), deixando o cron do CRM com erros em fila.
+
+**Decisão:** desligar o CRM primeiro (nada mais chama a rota) e então remover o
+lado do Controle.
+
+- **Removidos:** `app/api/ingest/venda/route.ts` (POST/DELETE), `ingestVendaSchema`
+  (+ os testes dele) e a variável `INGEST_SECRET` do `.env.example`.
+- **Mantidos:** todos os lançamentos já importados (`origem = 'crm'` — 71 linhas
+  no momento da remoção, de setembro e novembro), a marca "↩ CRM" na lista de
+  vendas e a coluna "Origem" dos relatórios; as colunas `origem` / `origem_id` e a
+  constraint `entradas_origem_uk` (proveniência dos lançamentos antigos —
+  `origem_id` é o id do pedido no CRM). Apagar essas linhas mudaria lucro e
+  margem históricos e não foi pedido.
+- **Pendente — aguarda autorização da Rai (apaga objeto de produção):** no Supabase
+  do Controle, a função `public.ingest_venda(text, jsonb)` e a tabela
+  `private.sync_config` (onde está o segredo). Sem a rota, nada os chama; mas a
+  função continua executável por quem tiver o segredo, via PostgREST — por isso a
+  recomendação é apagar. SQL, sem CASCADE (conferido: nada mais depende deles e o
+  schema `private` só tem essa tabela):
+  `drop function if exists public.ingest_venda(text, jsonb);`
+  `drop table if exists private.sync_config;`
+  O projeto Supabase é compartilhado com outros sistemas da Rai — esses dois
+  objetos são os únicos tocados.
+
+**Alternativas:** (a) só parar de chamar — deixaria rota, RPC e segredo abertos e
+sem uso; (b) apagar também as linhas `origem = 'crm'` — destrutivo e fora do
+pedido.
+
+**Consequência:** venda feita no CRM não entra mais sozinha — lançar à mão em
+Vendas. A env var `INGEST_SECRET` deste projeto na Vercel fica sem uso (apagar é
+opcional). Reativar exigiria recriar rota, RPC e um segredo novo.
